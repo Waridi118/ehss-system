@@ -1385,6 +1385,7 @@ export default function ReportsPage() {
                   <thead>
                     <tr>
                       <th>Requirement</th>
+                      <th>Legal / Requirement Ref.</th>
                       <th>Organisation</th>
                       <th>Reference</th>
                       <th>Expiry</th>
@@ -1395,6 +1396,7 @@ export default function ReportsPage() {
                     {complianceWithStatus.map((c, i) => (
                       <tr key={i}>
                         <td>{c.requirement}</td>
+                        <td>{c.requirement_reference || "—"}</td>
                         <td>{c.expert_organisation}</td>
                         <td>{c.reference_number || "—"}</td>
                         <td>{c.date_of_expiry || "—"}</td>

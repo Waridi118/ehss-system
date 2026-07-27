@@ -384,9 +384,9 @@ function CompliancePage() {
             <tr>
               <th>#</th>
               <th>Requirement</th>
+              <th>Legal / Requirement Ref.</th>
               <th>Organisation</th>
               <th>Reference no.</th>
-              <th>Legal / Requirement Ref.</th>
               <th>Issued</th>
               <th>Expires</th>
               <th>Validity</th>
@@ -420,9 +420,9 @@ function CompliancePage() {
                   <tr key={item.id} className={config.rowCls}>
                     <td>{index + 1}</td>
                     <td className="comp-req-name">{item.requirement}</td>
+                    <td>{item.requirement_reference || "—"}</td>
                     <td>{item.expert_organisation || "—"}</td>
                     <td className="comp-ref">{item.reference_number || "—"}</td>
-                    <td>{item.requirement_reference || "—"}</td>
                     <td>{formatDate(item.date_of_issuance)}</td>
                     <td>{formatDate(item.date_of_expiry)}</td>
                     <td>{item.validity_period}</td>

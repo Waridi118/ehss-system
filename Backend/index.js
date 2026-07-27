@@ -35,6 +35,10 @@ app.get('/', (req, res) => {
   res.send('EHSS Backend API running');
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 const { requireAuth } = require('./middleware/auth');
 
 const authRoutes = require('./routes/authRoutes');
