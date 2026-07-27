@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const pool = require('./config/db');
 
 const app = express();
 app.use(cors({
@@ -37,6 +38,15 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
+});
+
+app.get('/health/db', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.status(200).send('DB OK');
+  } catch (err) {
+    res.status(500).send('DB unreachable');
+  }
 });
 
 const { requireAuth } = require('./middleware/auth');
