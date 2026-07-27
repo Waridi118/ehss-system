@@ -324,16 +324,29 @@
 .dash-card.card-ok { border-left: 4px solid var(--color-success); }
 
 /* ── Responsive ── */
-@media (max-width: 900px) {
-  .dash-cards   { grid-template-columns: repeat(2, 1fr); }
-  .dash-two-col { grid-template-columns: 1fr; }
+@media (max-width: 1200px) {
+  .dash-two-col {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
-@media (max-width: 1200px) {
-  .dash-two-col { grid-template-columns: 1fr 1fr; }
+@media (max-width: 900px) {
+  .dash-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dash-two-col {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .dash-page  { padding: 16px; padding-top: 70px; }
-  .dash-cards { grid-template-columns: 1fr 1fr; }
+  .dash-page {
+    padding: 16px;
+    padding-top: 70px;
+  }
+
+  .dash-cards {
+    grid-template-columns: 1fr 1fr;
+  }
 }
