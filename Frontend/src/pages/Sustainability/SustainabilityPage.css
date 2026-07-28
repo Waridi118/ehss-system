@@ -109,8 +109,7 @@
     color: #fff; 
     border-color: var(--color-primary); 
     font-weight: 500; 
-}
-.sust-tab-content 
+} 
 .sust-two-col { 
     display: grid; 
     grid-template-columns: 1fr 1fr; 
@@ -259,4 +258,26 @@
     gap: 10px; 
     justify-content: flex-end; 
     margin-top: 20px;
+ }
+
+ @media (max-width: 768px) {
+     .sust-page {
+         padding: 16px;
+     }
+
+     .sust-cards {
+         grid-template-columns: 1fr 1fr;
+     }
+
+     .sust-two-col {
+         grid-template-columns: 1fr;
+     }
+
+     .sust-form-grid {
+         grid-template-columns: 1fr;
+     }
+
+     .sust-form-group.full {
+         grid-column: span 1;
+     }
  }

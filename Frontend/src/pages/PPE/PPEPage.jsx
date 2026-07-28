@@ -1097,144 +1097,140 @@ function PPEPage() {
                             key={`history-${item.id}`}
                             className="ppe-history-row"
                           >
-                            <tr className="ppe-history-row">
-                              <td colSpan={canViewStock() ? 8 : 7}>
-                                <div className="ppe-history-wrap">
-                                  <div className="ppe-history-title">
-                                    📋 Transaction history — {item.item_name} (
-                                    {item.size_spec})
-                                  </div>
+                            <td colSpan={canViewStock() ? 8 : 7}>
+                              <div className="ppe-history-wrap">
+                                <div className="ppe-history-title">
+                                  📋 Transaction history — {item.item_name} (
+                                  {item.size_spec})
+                                </div>
 
-                                  {history.length === 0 ? (
-                                    <div className="ppe-history-empty">
-                                      No transactions recorded yet for this
-                                      item. Use "Record transaction" to add
-                                      stock movements.
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <table className="ppe-history-table">
-                                        <thead>
-                                          <tr>
-                                            <th>#</th>
-                                            <th>Date</th>
-                                            <th>Type</th>
-                                            <th>Quantity</th>
-                                            <th>Notes</th>
-                                            <th>Recorded by</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {history.map((tx, i) => (
-                                            <tr
-                                              key={tx.id}
-                                              className={
-                                                tx.transaction_type ===
-                                                "received"
-                                                  ? "tx-received"
-                                                  : tx.transaction_type ===
-                                                      "issued"
-                                                    ? "tx-issued"
-                                                    : "tx-stocktake"
-                                              }
-                                            >
-                                              <td>{i + 1}</td>
-                                              <td>{formatDate(tx.date)}</td>
-                                              <td>
-                                                <span
-                                                  className={`tx-badge ${
-                                                    tx.transaction_type ===
-                                                    "received"
-                                                      ? "tx-badge-in"
-                                                      : tx.transaction_type ===
-                                                          "issued"
-                                                        ? "tx-badge-out"
-                                                        : "tx-badge-stocktake"
-                                                  }`}
-                                                >
-                                                  {tx.transaction_type ===
+                                {history.length === 0 ? (
+                                  <div className="ppe-history-empty">
+                                    No transactions recorded yet for this item.
+                                    Use "Record transaction" to add stock
+                                    movements.
+                                  </div>
+                                ) : (
+                                  <>
+                                    <table className="ppe-history-table">
+                                      <thead>
+                                        <tr>
+                                          <th>#</th>
+                                          <th>Date</th>
+                                          <th>Type</th>
+                                          <th>Quantity</th>
+                                          <th>Notes</th>
+                                          <th>Recorded by</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {history.map((tx, i) => (
+                                          <tr
+                                            key={tx.id}
+                                            className={
+                                              tx.transaction_type === "received"
+                                                ? "tx-received"
+                                                : tx.transaction_type ===
+                                                    "issued"
+                                                  ? "tx-issued"
+                                                  : "tx-stocktake"
+                                            }
+                                          >
+                                            <td>{i + 1}</td>
+                                            <td>{formatDate(tx.date)}</td>
+                                            <td>
+                                              <span
+                                                className={`tx-badge ${
+                                                  tx.transaction_type ===
                                                   "received"
-                                                    ? "▲ Received"
+                                                    ? "tx-badge-in"
                                                     : tx.transaction_type ===
                                                         "issued"
-                                                      ? "▼ Issued"
-                                                      : "📦 Stock Take"}
-                                                </span>
-                                              </td>
-                                              <td>
-                                                <strong
-                                                  className={
-                                                    tx.transaction_type ===
-                                                    "received"
-                                                      ? "qty-in"
-                                                      : "qty-out"
-                                                  }
-                                                >
-                                                  {tx.transaction_type ===
+                                                      ? "tx-badge-out"
+                                                      : "tx-badge-stocktake"
+                                                }`}
+                                              >
+                                                {tx.transaction_type ===
+                                                "received"
+                                                  ? "▲ Received"
+                                                  : tx.transaction_type ===
+                                                      "issued"
+                                                    ? "▼ Issued"
+                                                    : "📦 Stock Take"}
+                                              </span>
+                                            </td>
+                                            <td>
+                                              <strong
+                                                className={
+                                                  tx.transaction_type ===
                                                   "received"
-                                                    ? `+${tx.quantity}`
-                                                    : `-${tx.quantity}`}
-                                                </strong>{" "}
-                                                {item.unit_of_measure}
-                                              </td>
-                                              <td>{tx.notes || "—"}</td>
-                                              <td>{tx.recorded_by}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
+                                                    ? "qty-in"
+                                                    : "qty-out"
+                                                }
+                                              >
+                                                {tx.transaction_type ===
+                                                "received"
+                                                  ? `+${tx.quantity}`
+                                                  : `-${tx.quantity}`}
+                                              </strong>{" "}
+                                              {item.unit_of_measure}
+                                            </td>
+                                            <td>{tx.notes || "—"}</td>
+                                            <td>{tx.recorded_by}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
 
-                                      {/* Running balance summary */}
-                                      <div className="ppe-history-summary">
-                                        <span>
-                                          Total received:{" "}
-                                          <strong className="qty-in">
-                                            +
-                                            {history
-                                              .filter(
-                                                (t) =>
-                                                  t.transaction_type ===
-                                                  "received",
-                                              )
-                                              .reduce(
-                                                (sum, t) =>
-                                                  sum + Number(t.quantity),
-                                                0,
-                                              )}{" "}
-                                            {item.unit_of_measure}
-                                          </strong>
-                                        </span>
-                                        <span>
-                                          Total issued:{" "}
-                                          <strong className="qty-out">
-                                            -
-                                            {history
-                                              .filter(
-                                                (t) =>
-                                                  t.transaction_type ===
-                                                  "issued",
-                                              )
-                                              .reduce(
-                                                (sum, t) =>
-                                                  sum + Number(t.quantity),
-                                                0,
-                                              )}{" "}
-                                            {item.unit_of_measure}
-                                          </strong>
-                                        </span>
-                                        <span>
-                                          Current balance:{" "}
-                                          <strong>
-                                            {item.current_stock}{" "}
-                                            {item.unit_of_measure}
-                                          </strong>
-                                        </span>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
+                                    {/* Running balance summary */}
+                                    <div className="ppe-history-summary">
+                                      <span>
+                                        Total received:{" "}
+                                        <strong className="qty-in">
+                                          +
+                                          {history
+                                            .filter(
+                                              (t) =>
+                                                t.transaction_type ===
+                                                "received",
+                                            )
+                                            .reduce(
+                                              (sum, t) =>
+                                                sum + Number(t.quantity),
+                                              0,
+                                            )}{" "}
+                                          {item.unit_of_measure}
+                                        </strong>
+                                      </span>
+                                      <span>
+                                        Total issued:{" "}
+                                        <strong className="qty-out">
+                                          -
+                                          {history
+                                            .filter(
+                                              (t) =>
+                                                t.transaction_type === "issued",
+                                            )
+                                            .reduce(
+                                              (sum, t) =>
+                                                sum + Number(t.quantity),
+                                              0,
+                                            )}{" "}
+                                          {item.unit_of_measure}
+                                        </strong>
+                                      </span>
+                                      <span>
+                                        Current balance:{" "}
+                                        <strong>
+                                          {item.current_stock}{" "}
+                                          {item.unit_of_measure}
+                                        </strong>
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         )}
                       </React.Fragment>

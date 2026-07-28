@@ -139,3 +139,17 @@
   color: #aaa;
   font-size: 13px;
 }
+
+@media (max-width: 768px) {
+  .al-page {
+    padding: 16px;
+  }
+
+  .al-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .al-btn-primary {
+    width: 100%;
+  }
+}

@@ -117,6 +117,7 @@ export default function ReportsPage() {
   const [complianceItems, setComplianceItems] = useState([]);
   const [ppeItems, setPpeItems] = useState([]);
   const [ppeRequests, setPpeRequests] = useState([]);
+  const [ppeTransactions, setPpeTransactions] = useState([]);
   const [sustainabilityRecords, setSustainabilityRecords] = useState([]);
   const [emissionFactors, setEmissionFactors] = useState({
     petrol: 0,
@@ -245,16 +246,75 @@ export default function ReportsPage() {
   );
   const lowStock = ppeItems.filter((p) => p.current_stock <= p.reorder_level);
 
-  // PPE fast-moving chart data — for now uses transaction-less sample;
-  // shows current stock per month placeholder until real transaction history connects
+  // PPE fast-moving chart data;
   const selectedItem = ppeItems.find((p) => p.id === Number(selectedPPE));
-  const ppeMonthlyData = ["Jan", "Feb", "Mar", "Apr"].map((m, i) => ({
-    month: m,
-    stock: selectedItem
-      ? Math.max(selectedItem.current_stock + (3 - i) * 5, 0)
-      : 0,
-    restocked: i === 1 ? 20 : 0,
-  }));
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const monthNum = {
+    Jan: 0,
+    Feb: 1,
+    Mar: 2,
+    Apr: 3,
+    May: 4,
+    Jun: 5,
+    Jul: 6,
+    Aug: 7,
+    Sep: 8,
+    Oct: 9,
+    Nov: 10,
+    Dec: 11,
+  };
+
+  const itemTx = ppeTransactions.filter(
+    (t) => t.ppe_item_id === Number(selectedPPE),
+  );
+  const allItemTx = [...itemTx].sort((a, b) => {
+    const dateDiff = new Date(a.date) - new Date(b.date);
+    if (dateDiff !== 0) return dateDiff;
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  let runningStock = 0;
+  const stockByMonth = {};
+
+  allItemTx.forEach((t) => {
+    const qty = Number(t.quantity);
+    if (t.transaction_type === "received") runningStock += qty;
+    else if (t.transaction_type === "issued") runningStock -= qty;
+    else if (t.transaction_type === "stocktake") runningStock = qty;
+
+    const m = months[new Date(t.date).getMonth()];
+    if (m) stockByMonth[m] = runningStock;
+  });
+
+  let lastKnownStock = 0;
+  const ppeMonthlyData = months.map((m) => {
+    if (stockByMonth[m] !== undefined) lastKnownStock = stockByMonth[m];
+
+    const monthTx = itemTx.filter(
+      (t) => new Date(t.date).getMonth() === monthNum[m],
+    );
+    const restocked = monthTx
+      .filter((t) => t.transaction_type === "received")
+      .reduce((sum, t) => sum + Number(t.quantity), 0);
+    const issued = monthTx
+      .filter((t) => t.transaction_type === "issued")
+      .reduce((sum, t) => sum + Number(t.quantity), 0);
+
+    return { month: m, stock: lastKnownStock, restocked, issued };
+  });
 
   async function handleGenerate() {
     setLoading(true);
@@ -359,12 +419,20 @@ export default function ReportsPage() {
       }
 
       if (reportType === "ppe" || reportType === "ppe_trend") {
-        const [data, reqs] = await Promise.all([
+        const [data, reqs, tx] = await Promise.all([
           apiFetch(`/ppe`).then((r) => r.json()),
           apiFetch(`/ppe/requests`).then((r) => r.json()),
+          apiFetch(`/ppe/transactions`).then((r) => r.json()),
         ]);
         setPpeItems(data);
         setPpeRequests(reqs);
+        setPpeTransactions(
+          tx.map((t) => ({
+            ...t,
+            date: t.transaction_date,
+            created_at: t.created_at,
+          })),
+        );
         if (!selectedPPE && data.length > 0) setSelectedPPE(data[0].id);
       }
 
@@ -2217,6 +2285,7 @@ export default function ReportsPage() {
                       <th>Month</th>
                       <th>Stock level</th>
                       <th>Restocked</th>
+                      <th>Issued</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2230,6 +2299,7 @@ export default function ReportsPage() {
                         <td>
                           {d.restocked > 0 ? `+${d.restocked} received` : "—"}
                         </td>
+                        <td>{d.issued > 0 ? `-${d.issued} issued` : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2246,14 +2316,10 @@ export default function ReportsPage() {
                     <Legend />
                     <Bar dataKey="stock" name="Stock level" fill="#1a5276" />
                     <Bar dataKey="restocked" name="Restocked" fill="#27ae60" />
+                    <Bar dataKey="issued" name="Issued" fill="#c0392b" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-
-              <p style={{ fontSize: "11px", color: "#888", marginTop: "8px" }}>
-                Note: Monthly trend connects to full transaction history once
-                the PPE module's transaction log is shared system-wide.
-              </p>
             </>
           )}
 
