@@ -13,6 +13,8 @@ router.put('/requests/:id/fulfill', ppeController.fulfill);
 router.get('/transactions', ppeController.getAllTx);
 router.post('/transactions', ppeController.createTx);
 router.get('/transactions/:itemId', ppeController.getTxByItem);
+router.put('/transactions/:id', ppeController.updateTx);
+router.delete('/transactions/:id', ppeController.deleteTx);
 
 router.get('/:id', ppeController.getPPEItem);
 router.post('/', ppeController.createItem);

@@ -139,6 +139,7 @@ function PPEPage() {
     date: "",
     notes: "",
   });
+  const [editingTxId, setEditingTxId] = useState(null);
 
   // Add item form
   const [itemForm, setItemForm] = useState({
@@ -147,6 +148,7 @@ function PPEPage() {
     unit_of_measure: "pcs",
     reorder_level: "",
   });
+  const [editingItemId, setEditingItemId] = useState(null);
 
   // Reorder level inline edit
   // Stores { itemId, value } when editing, null when not
@@ -405,8 +407,14 @@ function PPEPage() {
     const qty = Number(txForm.quantity);
 
     try {
-      const res = await apiFetch(`${API_URL}/transactions`, {
-        method: "POST",
+      const isEditing = editingTxId !== null;
+      const url = isEditing
+        ? `${API_URL}/transactions/${editingTxId}`
+        : `${API_URL}/transactions`;
+      const method = isEditing ? "PUT" : "POST";
+
+      const res = await apiFetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ppe_item_id: id,
@@ -417,23 +425,30 @@ function PPEPage() {
           recorded_by: user?.full_name,
         }),
       });
-      const newTx = await res.json();
+      const savedTx = await res.json();
 
-      // Refresh the item's stock from backend (since stock was updated server-side)
       const itemRes = await apiFetch(`${API_URL}/${id}`);
       const updatedItem = await itemRes.json();
       setItems(items.map((item) => (item.id === id ? updatedItem : item)));
 
-      // Add to transaction history
-      setTransactions([
-        ...transactions,
-        { ...newTx, date: newTx.transaction_date?.split("T")[0] },
-      ]);
+      if (isEditing) {
+        setTransactions(
+          transactions.map((t) =>
+            t.id === editingTxId
+              ? { ...savedTx, date: savedTx.transaction_date?.split("T")[0] }
+              : t,
+          ),
+        );
+      } else {
+        setTransactions([
+          ...transactions,
+          { ...savedTx, date: savedTx.transaction_date?.split("T")[0] },
+        ]);
+      }
 
-      // Auto-expand the history for this item after recording
       setExpandedItemId(id);
-
       setModalType(null);
+      setEditingTxId(null);
       setTxForm({
         ppe_item_id: "",
         transaction_type: "",
@@ -443,10 +458,42 @@ function PPEPage() {
       });
       setErrors({});
       showBanner(
-        "Transaction recorded. Stock balance updated. History expanded below.",
+        isEditing
+          ? "Transaction updated. Stock recalculated."
+          : "Transaction recorded. Stock balance updated. History expanded below.",
       );
     } catch (err) {
       console.error("Failed to save transaction:", err);
+    }
+  }
+
+  function handleEditTx(tx) {
+    setTxForm({
+      ppe_item_id: String(tx.ppe_item_id),
+      transaction_type: tx.transaction_type,
+      quantity: String(tx.quantity),
+      date: tx.date,
+      notes: tx.notes || "",
+    });
+    setEditingTxId(tx.id);
+    setErrors({});
+    setModalType("transaction");
+  }
+
+  async function handleDeleteTx(tx) {
+    if (!window.confirm("Delete this transaction? Stock will be recalculated."))
+      return;
+    try {
+      await apiFetch(`${API_URL}/transactions/${tx.id}`, { method: "DELETE" });
+
+      const itemRes = await apiFetch(`${API_URL}/${tx.ppe_item_id}`);
+      const updatedItem = await itemRes.json();
+      setItems(items.map((i) => (i.id === tx.ppe_item_id ? updatedItem : i)));
+
+      setTransactions(transactions.filter((t) => t.id !== tx.id));
+      showBanner("Transaction deleted. Stock recalculated.");
+    } catch (err) {
+      console.error("Failed to delete transaction:", err);
     }
   }
 
@@ -465,6 +512,7 @@ function PPEPage() {
       e.unit_of_measure = "Unit of measure is required.";
     const dup = items.find(
       (i) =>
+        i.id !== editingItemId &&
         i.item_name.toLowerCase() === itemForm.item_name.toLowerCase() &&
         i.size_spec.toLowerCase() === itemForm.size_spec.toLowerCase(),
     );
@@ -473,26 +521,56 @@ function PPEPage() {
     return Object.keys(e).length === 0;
   }
 
+  function handleEditItem(item) {
+    setItemForm({
+      item_name: item.item_name,
+      size_spec: item.size_spec,
+      unit_of_measure: item.unit_of_measure,
+      reorder_level: String(item.reorder_level ?? ""),
+    });
+    setEditingItemId(item.id);
+    setErrors({});
+    setModalType("addItem");
+  }
+
   async function handleItemSave() {
     if (!validateItem()) return;
 
     try {
-      const res = await apiFetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          item_name: itemForm.item_name.trim(),
-          size_spec: itemForm.size_spec.trim(),
-          unit_of_measure: itemForm.unit_of_measure.trim(),
-          reorder_level: itemForm.reorder_level
-            ? Number(itemForm.reorder_level)
-            : 0,
-        }),
-      });
-      const newItem = await res.json();
+      const isEditing = editingItemId !== null;
+      const url = isEditing ? `${API_URL}/${editingItemId}` : API_URL;
+      const method = isEditing ? "PUT" : "POST";
 
-      setItems([...items, newItem]);
+      const body = isEditing
+        ? {
+            item_name: itemForm.item_name.trim(),
+            size_spec: itemForm.size_spec.trim(),
+            unit_of_measure: itemForm.unit_of_measure.trim(),
+          }
+        : {
+            item_name: itemForm.item_name.trim(),
+            size_spec: itemForm.size_spec.trim(),
+            unit_of_measure: itemForm.unit_of_measure.trim(),
+            reorder_level: itemForm.reorder_level
+              ? Number(itemForm.reorder_level)
+              : 0,
+          };
+
+      const res = await apiFetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const savedItem = await res.json();
+
+      if (isEditing) {
+        setItems(items.map((i) => (i.id === editingItemId ? savedItem : i)));
+      } else {
+        setItems([...items, savedItem]);
+      }
+
       setModalType(null);
+      setEditingItemId(null);
       setItemForm({
         item_name: "",
         size_spec: "",
@@ -501,15 +579,22 @@ function PPEPage() {
       });
       setErrors({});
       showBanner(
-        `"${newItem.item_name} — ${newItem.size_spec}" added. Current stock is 0 — record a received transaction to add stock.`,
+        isEditing
+          ? `"${savedItem.item_name} — ${savedItem.size_spec}" updated.`
+          : `"${savedItem.item_name} — ${savedItem.size_spec}" added. Current stock is 0 — record a received transaction to add stock.`,
       );
     } catch (err) {
-      console.error("Failed to add PPE item:", err);
+      console.error(
+        `Failed to ${editingItemId ? "update" : "add"} PPE item:`,
+        err,
+      );
     }
   }
 
   function handleCloseModal() {
     setModalType(null);
+    setEditingTxId(null);
+    setEditingItemId(null);
     setTxForm({
       ppe_item_id: "",
       transaction_type: "",
@@ -1075,17 +1160,25 @@ function PPEPage() {
                               </button>
                             )}
                             {canAddItem() && (
-                              <button
-                                className="ppe-btn-sm"
-                                style={{
-                                  color: "#c0392b",
-                                  borderColor: "#c0392b",
-                                  marginLeft: "6px",
-                                }}
-                                onClick={() => handleDeleteItem(item.id)}
-                              >
-                                🗑
-                              </button>
+                              <>
+                                <button
+                                  className="ppe-btn-sm ppe-edit-btn"
+                                  onClick={() => handleEditItem(item)}
+                                >
+                                  ✎ Edit
+                                </button>
+                                <button
+                                  className="ppe-btn-sm ppe-delete-btn"
+                                  style={{
+                                    color: "#c0392b",
+                                    borderColor: "#c0392b",
+                                    marginLeft: "6px",
+                                  }}
+                                  onClick={() => handleDeleteItem(item.id)}
+                                >
+                                  🗑 Delete
+                                </button>
+                              </>
                             )}
                             {!canRecordTransaction() && !canAddItem() && "—"}
                           </td>
@@ -1121,6 +1214,7 @@ function PPEPage() {
                                           <th>Quantity</th>
                                           <th>Notes</th>
                                           <th>Recorded by</th>
+                                          <th>Actions</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1177,6 +1271,22 @@ function PPEPage() {
                                             </td>
                                             <td>{tx.notes || "—"}</td>
                                             <td>{tx.recorded_by}</td>
+                                            <td>
+                                              <button
+                                                className="ppe-btn-sm ppe-edit-btn"
+                                                onClick={() => handleEditTx(tx)}
+                                              >
+                                                Edit
+                                              </button>
+                                              <button
+                                                className="ppe-btn-sm ppe-delete-btn"
+                                                onClick={() =>
+                                                  handleDeleteTx(tx)
+                                                }
+                                              >
+                                                Delete
+                                              </button>
+                                            </td>
                                           </tr>
                                         ))}
                                       </tbody>
@@ -1595,7 +1705,9 @@ function PPEPage() {
       {modalType === "transaction" && (
         <div className="ppe-modal-overlay">
           <div className="ppe-modal">
-            <h2 className="ppe-modal-title">Record stock transaction</h2>
+            <h2 className="ppe-modal-title">
+              {editingTxId ? "Edit transaction" : "Record stock transaction"}
+            </h2>
 
             <div className="ppe-form-group">
               <label className="ppe-form-label">
@@ -1724,7 +1836,9 @@ function PPEPage() {
       {modalType === "addItem" && (
         <div className="ppe-modal-overlay">
           <div className="ppe-modal">
-            <h2 className="ppe-modal-title">Add new PPE item</h2>
+            <h2 className="ppe-modal-title">
+              {editingItemId ? "Edit PPE item" : "Add new PPE item"}
+            </h2>
 
             <div className="ppe-form-group">
               <label className="ppe-form-label">
@@ -1744,9 +1858,7 @@ function PPEPage() {
             </div>
 
             <div className="ppe-form-group">
-              <label className="ppe-form-label">
-                Size / specification <span className="required">*</span>
-              </label>
+              <label className="ppe-form-label">Size / specification</label>
               <input
                 className="ppe-form-input"
                 type="text"
@@ -1777,28 +1889,35 @@ function PPEPage() {
               </select>
             </div>
 
-            <div className="ppe-form-group">
-              <label className="ppe-form-label">Reorder level (optional)</label>
-              <input
-                className="ppe-form-input"
-                type="number"
-                name="reorder_level"
-                value={itemForm.reorder_level}
-                onChange={handleItemChange}
-                placeholder="e.g. 10"
-                min="0"
-              />
-              <div
-                style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}
-              >
-                Alert when stock falls to this number. Leave blank for no alert.
+            {!editingItemId && (
+              <div className="ppe-form-group">
+                <label className="ppe-form-label">
+                  Reorder level (optional)
+                </label>
+                <input
+                  className="ppe-form-input"
+                  type="number"
+                  name="reorder_level"
+                  value={itemForm.reorder_level}
+                  onChange={handleItemChange}
+                  placeholder="e.g. 10"
+                  min="0"
+                />
+                <div
+                  style={{ fontSize: "11px", color: "#888", marginTop: "4px" }}
+                >
+                  Alert when stock falls to this number. Leave blank for no
+                  alert.
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="ppe-form-group">
-              <label className="ppe-form-label">Starting stock</label>
+              <label className="ppe-form-label">Current stock</label>
               <div className="ppe-form-readonly">
-                0 — use Record transaction to add stock after creating the item.
+                {editingItemId
+                  ? `${items.find((i) => i.id === editingItemId)?.current_stock ?? 0} — use Record transaction to adjust stock.`
+                  : "0 — use Record transaction to add stock after creating the item."}
               </div>
             </div>
 
@@ -1807,7 +1926,7 @@ function PPEPage() {
                 Cancel
               </button>
               <button className="ppe-btn-primary" onClick={handleItemSave}>
-                Add item
+                {editingItemId ? "Save changes" : "Add item"}
               </button>
             </div>
           </div>

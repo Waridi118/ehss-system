@@ -122,9 +122,25 @@ const deleteRequestItem = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+const updateTx = async (req, res) => {
+  try {
+    const tx = await ppeModel.updateTransaction(req.params.id, req.body);
+    await logAudit({ userId: req.user?.id, userName: req.user?.full_name, action: 'UPDATE', tableName: 'ppe_transactions', recordId: tx.id, newValue: tx, ip: req.ip });
+    res.json(tx);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+const deleteTx = async (req, res) => {
+  try {
+    const deleted = await ppeModel.deleteTransaction(req.params.id);
+    await logAudit({ userId: req.user?.id, userName: req.user?.full_name, action: 'DELETE', tableName: 'ppe_transactions', recordId: deleted.id, ip: req.ip });
+    res.json(deleted);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
 module.exports = {
   getPPEItems, getPPEItem,
   createRequest, approve, reject, fulfill, getRequests,
   createItem, updateItem, deleteItem,
-  createTx, getTxByItem, getAllTx, deleteRequestItem
+  createTx, getTxByItem, getAllTx, deleteRequestItem, updateTx, deleteTx
 };

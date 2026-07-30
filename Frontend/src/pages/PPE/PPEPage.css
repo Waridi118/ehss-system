@@ -204,17 +204,28 @@
 
 /* Small buttons */
 .ppe-btn-sm {
-  font-size: var(--font-size-xs);
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid #d0d7de;
   background: var(--color-surface);
+  padding: 5px 10px;
+  border-radius: 5px;
   cursor: pointer;
-  margin-right: 4px;
-  font-family: var(--font-family);
-  transition: all var(--transition);
+  font-size: 12px;
+  margin-right: 6px;
 }
-.ppe-btn-sm:hover { background: var(--color-border-light); }
+
+.ppe-btn-sm:hover {
+  opacity: 0.9;
+}
+
+.ppe-edit-btn {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.ppe-delete-btn {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
 
 .ppe-btn-xs {
   padding: 3px 8px;

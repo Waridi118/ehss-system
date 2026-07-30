@@ -116,10 +116,14 @@ const createPPEItem = async (data) => {
 };
 
 const updatePPEItem = async (id, data) => {
-  const { reorder_level } = data;
+  const { item_name, size_spec, unit_of_measure, reorder_level } = data;
   const result = await pool.query(
-    `UPDATE ppe_items SET reorder_level=$1, updated_at=NOW() WHERE id=$2 RETURNING *`,
-    [reorder_level, id]
+    `UPDATE ppe_items
+     SET item_name=$1, size_spec=$2, unit_of_measure=$3,
+         reorder_level = COALESCE($4, reorder_level),
+         updated_at=NOW()
+     WHERE id=$5 RETURNING *`,
+    [item_name, size_spec, unit_of_measure, reorder_level ?? null, id]
   );
   return result.rows[0];
 };
@@ -178,9 +182,55 @@ const deleteRequest = async (id) => {
   await pool.query('DELETE FROM ppe_requests WHERE id = $1', [id]);
 };
 
+const recalculatePPEStock = async (ppe_item_id) => {
+  const txResult = await pool.query(
+    'SELECT * FROM ppe_transactions WHERE ppe_item_id = $1 ORDER BY transaction_date ASC, id ASC',
+    [ppe_item_id]
+  );
+
+  let stock = 0;
+  for (const tx of txResult.rows) {
+    const qty = Number(tx.quantity);
+    if (tx.transaction_type === 'received') stock += qty;
+    else if (tx.transaction_type === 'issued') stock -= qty;
+    else if (tx.transaction_type === 'stocktake') stock = qty;
+  }
+
+  await pool.query('UPDATE ppe_items SET current_stock = $1 WHERE id = $2', [stock, ppe_item_id]);
+  return stock;
+};
+
+const updateTransaction = async (id, data) => {
+  const existing = await pool.query('SELECT * FROM ppe_transactions WHERE id = $1', [id]);
+  if (!existing.rows[0]) throw new Error('Transaction not found');
+  const ppe_item_id = existing.rows[0].ppe_item_id;
+
+  const { transaction_type, quantity, transaction_date, notes } = data;
+  const result = await pool.query(
+    `UPDATE ppe_transactions
+     SET transaction_type=$1, quantity=$2, transaction_date=$3, notes=$4
+     WHERE id=$5 RETURNING *`,
+    [transaction_type, quantity, transaction_date, notes, id]
+  );
+
+  await recalculatePPEStock(ppe_item_id);
+  return result.rows[0];
+};
+
+const deleteTransaction = async (id) => {
+  const existing = await pool.query('SELECT * FROM ppe_transactions WHERE id = $1', [id]);
+  if (!existing.rows[0]) throw new Error('Transaction not found');
+  const ppe_item_id = existing.rows[0].ppe_item_id;
+
+  const result = await pool.query('DELETE FROM ppe_transactions WHERE id = $1 RETURNING *', [id]);
+  await recalculatePPEStock(ppe_item_id);
+  return result.rows[0];
+};
+
 module.exports = {
   getAllPPEItems, getPPEItemById,
   createPPERequest, approveRequest, rejectRequest, fulfillRequest, getAllRequests,
   createPPEItem, updatePPEItem, softDeletePPEItem,
-  createTransaction, getTransactionsByItem, getAllTransactions, deleteRequest
+  createTransaction, getTransactionsByItem, getAllTransactions, deleteRequest,
+  recalculatePPEStock, updateTransaction, deleteTransaction
 };
